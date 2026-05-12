@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home Security System</title>
+    <style>
+      /* ─── Reset & Base ─────────────────────────────────────────────── */
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: #070a1a;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family:
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        color: #fff;
+        overflow: hidden;
+      }
+
+      /* ─── Dashboard Card ───────────────────────────────────────────── */
+      .card {
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 28px;
+        width: min(820px, 96vw);
+        padding: 44px 60px 52px;
+        backdrop-filter: blur(24px);
+      }
+
+      /* ─── Header ───────────────────────────────────────────────────── */
+      .header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 50px;
+      }
+
+      .header-brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .brand-icon {
+        width: 48px;
+        height: 48px;
+        flex-shrink: 0;
+      }
+
+      .brand-name {
+        font-size: 21px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: #fff;
+      }
+
+      .brand-sub {
+        font-size: 12.5px;
+        color: rgba(255, 255, 255, 0.4);
+        letter-spacing: 0.04em;
+        margin-top: 3px;
+      }
+
+      .conn-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #22c55e;
+        padding-top: 4px;
+      }
+
+      .conn-badge svg {
+        width: 20px;
+        height: 20px;
+      }
+
+      /* ─── Status Section ───────────────────────────────────────────── */
+      .status-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 36px;
+      }
+
+      /* Outer ring + inner circle */
+      .ring-wrap {
+        position: relative;
+        width: 290px;
+        height: 290px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .outer-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1.5px solid rgba(255, 255, 255, 0.08);
+        transition:
+          border-color 0.5s ease,
+          box-shadow 0.5s ease;
+      }
+
+      .circle {
+        width: 228px;
+        height: 228px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          background 0.5s ease,
+          box-shadow 0.5s ease;
+      }
+
+      .circle svg {
+        width: 104px;
+        height: 104px;
+      }
+
+      /* ── State colour tokens ── */
+      /* SAFE – green */
+      .safe .outer-ring {
+        border-color: rgba(34, 197, 94, 0.3);
+        box-shadow: 0 0 40px rgba(34, 197, 94, 0.08);
+      }
+      .safe .circle {
+        background: radial-gradient(circle at 38% 32%, #34d974, #16a34a);
+        box-shadow:
+          0 0 55px rgba(34, 197, 94, 0.75),
+          0 0 110px rgba(34, 197, 94, 0.4),
+          0 0 180px rgba(34, 197, 94, 0.18);
+      }
+      .safe .state-label {
+        color: #22c55e;
+      }
+
+      /* DETECTED – amber */
+      .detected .outer-ring {
+        border-color: rgba(245, 158, 11, 0.3);
+        box-shadow: 0 0 40px rgba(245, 158, 11, 0.08);
+      }
+      .detected .circle {
+        background: radial-gradient(circle at 38% 32%, #fcd34d, #b45309);
+        box-shadow:
+          0 0 55px rgba(245, 158, 11, 0.75),
+          0 0 110px rgba(245, 158, 11, 0.4),
+          0 0 180px rgba(245, 158, 11, 0.18);
+      }
+      .detected .state-label {
+        color: #f59e0b;
+      }
+
+      /* ALERT – red */
+      .alert .outer-ring {
+        border-color: rgba(239, 68, 68, 0.35);
+        box-shadow: 0 0 40px rgba(239, 68, 68, 0.1);
+      }
+      .alert .circle {
+        background: radial-gradient(circle at 38% 32%, #f87171, #b91c1c);
+        box-shadow:
+          0 0 55px rgba(239, 68, 68, 0.8),
+          0 0 110px rgba(239, 68, 68, 0.45),
+          0 0 180px rgba(239, 68, 68, 0.2);
+        animation: pulse-alert 1.4s ease-in-out infinite;
+      }
+      .alert .state-label {
+        color: #ef4444;
+      }
+
+      /* CALIBRATING – grey */
+      .calibrating .outer-ring {
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+      .calibrating .circle {
+        background: radial-gradient(circle at 38% 32%, #6b7280, #374151);
+        box-shadow:
+          0 0 55px rgba(156, 163, 175, 0.4),
+          0 0 110px rgba(156, 163, 175, 0.2);
+      }
+      .calibrating .state-label {
+        color: #9ca3af;
+      }
+
+      @keyframes pulse-alert {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.045);
+        }
+      }
+
+      /* ─── Text below circle ───────────────────────────────────────── */
+      .state-label {
+        font-size: 54px;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+        line-height: 1;
+        text-align: center;
+        transition: color 0.5s ease;
+      }
+
+      .state-msg {
+        font-size: 17px;
+        color: rgba(255, 255, 255, 0.55);
+        text-align: center;
+        margin-top: 8px;
+        letter-spacing: 0.03em;
+      }
+
+      /* ─── Stats Row ────────────────────────────────────────────────── */
+      .stats {
+        display: flex;
+        gap: 52px;
+      }
+
+      .stat {
+        text-align: center;
+      }
+
+      .stat-label {
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: rgba(255, 255, 255, 0.3);
+      }
+
+      .stat-value {
+        font-size: 18px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.72);
+        margin-top: 4px;
+      }
+
+      /* ─── Footer ───────────────────────────────────────────────────── */
+      .footer {
+        text-align: center;
+        margin-top: 42px;
+        font-size: 13.5px;
+        color: rgba(255, 255, 255, 0.25);
+        letter-spacing: 0.06em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-brand">
+          <!-- Shield logo -->
+          <svg
+            class="brand-icon"
+            viewBox="0 0 48 48"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M24 4L8 11v13c0 11 7 21.3 16 24.8C33 45.3 40 35 40 24V11L24 4z"
+              stroke="rgba(255,255,255,.75)"
+              stroke-width="2.4"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M16.5 24.5l6 6 10-11"
+              stroke="rgba(255,255,255,.75)"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <div>
+            <div class="brand-name">HOME SECURITY SYSTEM</div>
+            <div class="brand-sub">Real-time Monitoring</div>
+          </div>
+        </div>
+
+        <!-- Connection badge -->
+        <div class="conn-badge" id="connBadge">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M5 12.6a11 11 0 0 1 14 0"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M1.4 9a16 16 0 0 1 21.2 0"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <path
+              d="M8.5 16.1a6 6 0 0 1 7 0"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+            <circle cx="12" cy="20" r="1.2" fill="currentColor" />
+          </svg>
+          Connected
+        </div>
+      </header>
+
+      <!-- Status area -->
+      <div id="root" class="status-wrap safe">
+        <!-- Ring + circle -->
+        <div class="ring-wrap">
+          <div class="outer-ring"></div>
+          <div class="circle">
+            <!-- Icon swapped via JS -->
+            <svg
+              id="stateIcon"
+              viewBox="0 0 100 100"
+              fill="none"
+              aria-hidden="true"
+            ></svg>
+          </div>
+        </div>
+
+        <!-- Label + message -->
+        <div>
+          <div class="state-label" id="stateLabel">—</div>
+          <div class="state-msg" id="stateMsg">Connecting…</div>
+        </div>
+
+        <!-- RSSI / score / rel / bg -->
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">RSSI</div>
+            <div class="stat-value" id="rssiVal">—</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Score</div>
+            <div class="stat-value" id="motionVal">—</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Rel</div>
+            <div class="stat-value" id="relVal">—</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">BG</div>
+            <div class="stat-value" id="bgVal">—</div>
+          </div>
+        </div>
+      </div>
+      <!-- /root -->
+
+      <div class="footer" id="clock">—</div>
+    </div>
+    <!-- /card -->
+
+    <script>
+      /* ── SVG icon paths ─────────────────────────────────── */
+      const ICONS = {
+        SAFE: `
+      <path d="M50 10L22 21v18c0 18 10.5 34 28 39.8C67.5 73 78 57 78 39V21L50 10z"
+            fill="rgba(255,255,255,.22)" stroke="white" stroke-width="3.2" stroke-linejoin="round"/>
+      <path d="M35 51l10 10 21-22" stroke="white" stroke-width="4.5"
+            stroke-linecap="round" stroke-linejoin="round"/>`,
+
+        DETECTED: `
+      <circle cx="50" cy="50" r="34" fill="rgba(255,255,255,.2)"
+              stroke="white" stroke-width="3.2"/>
+      <path d="M50 30v26" stroke="white" stroke-width="5.5" stroke-linecap="round"/>
+      <circle cx="50" cy="65" r="3.5" fill="white"/>`,
+
+        ALERT: `
+      <circle cx="50" cy="50" r="34" fill="rgba(255,255,255,.2)"
+              stroke="white" stroke-width="3.2"/>
+      <path d="M50 28v28" stroke="white" stroke-width="5.5" stroke-linecap="round"/>
+      <circle cx="50" cy="66" r="3.5" fill="white"/>`,
+
+        CALIBRATING: `
+      <circle cx="50" cy="50" r="34" fill="rgba(255,255,255,.1)"
+              stroke="rgba(255,255,255,.4)" stroke-width="3.2" stroke-dasharray="8 6"/>
+      <path d="M35 50a15 15 0 1 1 30 0 15 15 0 0 1-15 15" stroke="rgba(255,255,255,.6)"
+            stroke-width="4" stroke-linecap="round"/>`,
+      };
+
+      const LABEL = {
+        SAFE: "SAFE",
+        DETECTED: "DETECTED",
+        ALERT: "ALERT",
+        CALIBRATING: "CALIBRATING",
+      };
+
+      /* ── DOM refs ───────────────────────────────────────── */
+      const root = document.getElementById("root");
+      const stateIcon = document.getElementById("stateIcon");
+      const stateLabel = document.getElementById("stateLabel");
+      const stateMsg = document.getElementById("stateMsg");
+      const rssiVal = document.getElementById("rssiVal");
+      const motionVal = document.getElementById("motionVal");
+      const relVal = document.getElementById("relVal");
+      const bgVal = document.getElementById("bgVal");
+      const connBadge = document.getElementById("connBadge");
+
+      const STATES = ["safe", "detected", "alert", "calibrating"];
+
+      function applyState(data) {
+        const key = (data.state || "SAFE").toUpperCase();
+        const cls = key.toLowerCase();
+
+        STATES.forEach((s) => root.classList.remove(s));
+        root.classList.add(cls);
+
+        stateIcon.innerHTML = ICONS[key] ?? ICONS.SAFE;
+        stateLabel.textContent = LABEL[key] ?? key;
+        stateMsg.textContent = data.message ?? "";
+
+        rssiVal.textContent = data.rssi != null ? `${data.rssi} dBm` : "—";
+        motionVal.textContent =
+          data.motion != null ? Number(data.motion).toFixed(2) : "—";
+        relVal.textContent =
+          data.rel != null ? Number(data.rel).toFixed(2) : "—";
+        bgVal.textContent = data.bg != null ? Number(data.bg).toFixed(2) : "—";
+      }
+
+      /* ── Clock ──────────────────────────────────────────── */
+      const clock = document.getElementById("clock");
+      function tick() {
+        const n = new Date();
+        const d = n.toLocaleDateString("en-CA"); // YYYY-MM-DD
+        const t = n.toLocaleTimeString("en-GB"); // HH:MM:SS
+        clock.textContent = `${d}  |  ${t}`;
+      }
+      tick();
+      setInterval(tick, 1000);
+
+      /* ── SSE ────────────────────────────────────────────── */
+      function connect() {
+        const es = new EventSource("/events");
+
+        es.onopen = () => {
+          connBadge.style.color = "#22c55e";
+          connBadge.lastElementChild &&
+            (connBadge.querySelector("span") ?? {}).remove?.();
+          // restore "Connected" text if replaced
+          if (connBadge.lastChild.nodeType === Node.TEXT_NODE)
+            connBadge.lastChild.textContent = " Connected";
+        };
+
+        es.onmessage = (e) => {
+          try {
+            applyState(JSON.parse(e.data));
+          } catch (_) {}
+        };
+
+        es.onerror = () => {
+          connBadge.style.color = "#ef4444";
+          es.close();
+          setTimeout(connect, 3000); // auto-reconnect
+        };
+      }
+
+      connect();
+    </script>
+  </body>
+</html>
