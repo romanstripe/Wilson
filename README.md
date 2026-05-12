@@ -75,8 +75,13 @@ $$\text{score} = \frac{1}{64} \sum_{k=1}^{64} \sigma_k(\text{window})$$
 | 상승 (움직임 감지) | 0.45 | 즉시 반응                    |
 | 하강 (조용해질 때) | 0.10 | 천천히 복귀 → 상태 오래 유지 |
 
+
 **상대 점수:**
-$$\text{rel} = \frac{\text{smooth\_score}}{\text{bg\_score}}$$
+
+$$
+\mathrm{rel} = \frac{\mathrm{smoothScore}}{\mathrm{bgScore}}
+$$
+
 
 **상태 판정:**
 
