@@ -4,6 +4,9 @@ ESP32 보드에서 수집한 **CSI(Channel State Information)** 데이터를 분
 
 [![Live Demo](https://img.shields.io/badge/🧸_Live_Demo-wilsonweb--lake.vercel.app-B89B72?style=for-the-badge)](https://wilsonweb-lake.vercel.app/)
 
+
+
+
 ## 프로젝트 소개
 
 WiFi 신호는 사람이나 물체의 움직임에 따라 미세하게 변화합니다. 이 프로젝트는 ESP32에서 수집한 CSI 신호의 진폭 변화를 분석해 별도의 카메라 없이 실내 상태를 감지합니다.
