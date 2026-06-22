@@ -1,37 +1,39 @@
-// sender.ino 수정 - 자체 브로드캐스트 추가
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <esp_wifi.h>
 
+namespace {
+constexpr char AP_SSID[] = "GRADUATION_PROJECT";
+constexpr char AP_PASSWORD[] = "12345678";
+constexpr char BROADCAST_IP[] = "192.168.4.255";
+constexpr uint8_t WIFI_CHANNEL = 11;
+constexpr uint16_t UDP_PORT = 12345;
+constexpr uint16_t SEND_INTERVAL_MS = 50;
+constexpr int8_t TX_POWER = 8;
+
 WiFiUDP udp;
+}  // namespace
 
 void setup() {
   Serial.begin(115200);
   WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID, AP_PASSWORD, WIFI_CHANNEL, false);
 
-  WiFi.softAP("GRADUATION_PROJECT", "12345678", 11, false);
-
- // 절전 끄기
+  // 일정한 패킷 주기 유지.
   esp_wifi_set_ps(WIFI_PS_NONE);
 
-  // 송신 출력 낮추기
-  // 8  = 2 dBm
-  // 20 = 5 dBm
-  // 34 = 8.5 dBm
-  // 78 = 19.5 dBm
-  esp_wifi_set_max_tx_power(8);   // 가장 약하게 시작
+  // 최소 송신 출력 적용.
+  // 8 = 2 dBm, 20 = 5 dBm, 34 = 8.5 dBm, 78 = 19.5 dBm
+  esp_wifi_set_max_tx_power(TX_POWER);
 
-  
-  // UDP 시작 - 자체 브로드캐스트용
-  udp.begin(12345);
+  udp.begin(UDP_PORT);
   Serial.println("AP + Self-broadcast READY");
 }
 
 void loop() {
-  // AP 자신이 브로드캐스트를 쏨 → 수신기 CSI 유발
-  // 노트북 연결 불필요!
-  udp.beginPacket("192.168.4.255", 12345);
-  udp.write((uint8_t*)"ping", 4);
+  // 초당 20회 CSI 트래픽 생성.
+  udp.beginPacket(BROADCAST_IP, UDP_PORT);
+  udp.write(reinterpret_cast<const uint8_t*>("ping"), 4);
   udp.endPacket();
-  delay(50); // 초당 20회
+  delay(SEND_INTERVAL_MS);
 }

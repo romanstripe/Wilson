@@ -1,38 +1,33 @@
-# detect_zone.py
-import serial
-import numpy as np
+"""ESP32 CSI 프레임 기반 실내 움직임 감지."""
+
 import time
-from collections import deque, Counter
-from utils import parse_csi_line, csi_to_amp
+from collections import Counter, deque
 
-SERIAL_PORT    = "COM4"
-BAUD_RATE      = 115200
-CSI_LEN        = 128
-WINDOW_SIZE    = 20       # 윈도우 크기
-SLIDE_INTERVAL = 0.15     # 빠른 갱신
+import numpy as np
+import serial
 
-# ── 적응형 배경 모델 파라미터 ─────────────────────────────────────────
-WARMUP_FRAMES  = 60       # 초기 배경 추정 프레임 수 (~15초)
-BG_ALPHA       = 0.003    # 배경 EMA 속도 (느리게 — 사람 있을 때 적응 최소화)
-BG_UPDATE_TH   = 1.08     # 배경은 이 비율 이하에서만 업데이트 (사람 있으면 고정)
+from utils import csi_to_amp, parse_csi_line
 
-# 비대칭 EMA: 올라갈 땐 빠르게, 내려갈 땐 느리게
-SCORE_UP       = 0.45     # 상승 속도 (움직임 즉시 반영)
-SCORE_DOWN     = 0.1     # 하강 속도 (ALERT/DETECTED 상태 오래 유지)
+SERIAL_PORT = "COM4"
+BAUD_RATE = 115200
+CSI_LEN = 128
 
-# 상대 점수(현재/배경) 임계값
-TH_SAFE        = 1.6     # 이하 → SAFE  (더 민감)
-TH_ALERT       = 2.0     # 이상 → ALERT
+WINDOW_SIZE = 20
+SLIDE_INTERVAL = 0.15
+STATE_HISTORY_SIZE = 12
 
-ser           = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.2)
-amp_buffer    = deque(maxlen=WINDOW_SIZE)
-rssi_buffer   = deque(maxlen=WINDOW_SIZE)
-state_history = deque(maxlen=12)  # 더 긴 상태 기억 → 빠른 복귀 방지
-last_eval     = time.time()
+# 적응형 배경 모델.
+WARMUP_FRAMES = 60  # 약 15초.
+BG_ALPHA = 0.003
+BG_UPDATE_TH = 1.08
 
-warmup_scores  = []
-bg_score       = None     # None이어야 워밍업 진입
-smooth_score   = None
+# 상승 즉시 반영, 하강 상태 유지.
+SCORE_UP = 0.45
+SCORE_DOWN = 0.1
+
+# 상대 점수 임계값.
+TH_SAFE = 1.6
+TH_ALERT = 2.0
 
 LABEL_MAP = {
     "SAFE":     "🟢 SAFE     | No Activity",
@@ -40,74 +35,112 @@ LABEL_MAP = {
     "ALERT":    "🔴 ALERT    | Movement Detected",
 }
 
-print("=== Zone Detection Demo Started ===")
-print(f"[워밍업] ⚠️  지금 방에서 나가 주세요! 빈 방 기준선을 {WARMUP_FRAMES}프레임 동안 측정합니다...")
 
-while True:
-    line = ser.readline().decode(errors="ignore").strip()
+def read_frame(serial_port: serial.Serial) -> tuple[int | None, np.ndarray | None]:
+    """시리얼 한 줄을 RSSI와 진폭 배열로 변환."""
+    line = serial_port.readline().decode(errors="ignore").strip()
     rssi, csi = parse_csi_line(line, CSI_LEN)
     if csi is None:
-        continue
+        return None, None
+    return rssi, csi_to_amp(csi, CSI_LEN)
 
-    amp = csi_to_amp(csi, CSI_LEN)
-    rssi_buffer.append(rssi)
-    amp_buffer.append(amp)
 
-    now = time.time()
-    if now - last_eval < SLIDE_INTERVAL:
-        continue
-    last_eval = now
+def compute_raw_score(amplitudes: deque[np.ndarray]) -> float:
+    """서브캐리어별 시간축 표준편차의 평균 계산."""
+    window = np.asarray(amplitudes)
+    return float(np.std(window, axis=0).mean())
 
-    if len(amp_buffer) < WINDOW_SIZE:
-        continue
 
-    w         = np.array(amp_buffer)           # (WINDOW_SIZE, 64)
-    raw_score = np.mean(np.std(w, axis=0))     # 서브캐리어별 시간축 std 평균
-    rssi_med  = np.median(rssi_buffer)
+def finish_warmup(warmup_scores: list[float]) -> float:
+    """워밍업 점수에서 초기 배경값 추정."""
+    scores = np.asarray(warmup_scores)
+    median = np.median(scores)
+    clean_scores = scores[scores <= median * 1.5]
+    if len(clean_scores) < 10:
+        clean_scores = scores  # 표본 부족 시 전체 점수 사용.
 
-    # ── 워밍업: 초기 배경값 추정 ──────────────────────────────────────
-    if bg_score is None:
-        warmup_scores.append(raw_score)
-        if len(warmup_scores) % 10 == 0:
-            print(f"[{time.strftime('%H:%M:%S')}] 워밍업 {len(warmup_scores)}/{WARMUP_FRAMES}  score={raw_score:.2f}")
-        if len(warmup_scores) >= WARMUP_FRAMES:
-            # 중간값 1.5배 초과 스파이크 제거 → 워밍업 중 잠깐 사람 있어도 정확한 baseline
-            arr    = np.array(warmup_scores)
-            median = np.median(arr)
-            clean  = arr[arr <= median * 1.5]
-            if len(clean) < 10:
-                clean = arr  # 필터 후 너무 적으면 전체 사용
-            bg_score     = float(np.percentile(clean, 20))  # 하위 20th
-            smooth_score = bg_score
-            removed      = len(arr) - len(clean)
-            print(f"[완료] 스파이크 {removed}개 제거 | 초기 배경={bg_score:.2f} | SAFE<{bg_score*TH_SAFE:.2f} | ALERT>{bg_score*TH_ALERT:.2f}")
-        continue
-
-    # ── 현재 점수 비대칭 EMA ───────────────────────────────────────────
-    alpha        = SCORE_UP if raw_score > smooth_score else SCORE_DOWN
-    smooth_score = (1 - alpha) * smooth_score + alpha * raw_score
-
-    # ── 상대 점수 계산 ─────────────────────────────────────────────────
-    relative = smooth_score / (bg_score + 1e-9)
-
-    # ── 배경 업데이트: BG_UPDATE_TH 이하일 때만 (사람 있으면 고정) ──────
-    if relative < BG_UPDATE_TH:
-        bg_score = (1 - BG_ALPHA) * bg_score + BG_ALPHA * raw_score
-
-    # ── 상태 판단 ──────────────────────────────────────────────────────
-    if relative < TH_SAFE:
-        raw_state = "SAFE"
-    elif relative > TH_ALERT:
-        raw_state = "ALERT"
-    else:
-        raw_state = "DETECTED"
-
-    state_history.append(raw_state)
-    final_state = Counter(state_history).most_common(1)[0][0]
-
+    background_score = float(np.percentile(clean_scores, 20))
+    removed_count = len(scores) - len(clean_scores)
     print(
-        f"[{time.strftime('%H:%M:%S')}] "
-        f"{LABEL_MAP[final_state]} | "
-        f"RSSI={rssi_med:.1f} | "
-        f"score={raw_score:.2f} rel={relative:.2f} bg={bg_score:.2f}"
+        f"[완료] 스파이크 {removed_count}개 제거 | 초기 배경={background_score:.2f} | "
+        f"SAFE<{background_score * TH_SAFE:.2f} | "
+        f"ALERT>{background_score * TH_ALERT:.2f}"
     )
+    return background_score
+
+
+def classify(relative_score: float) -> str:
+    if relative_score < TH_SAFE:
+        return "SAFE"
+    if relative_score > TH_ALERT:
+        return "ALERT"
+    return "DETECTED"
+
+
+def main():
+    serial_port = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.2)
+    amp_buffer = deque(maxlen=WINDOW_SIZE)
+    rssi_buffer = deque(maxlen=WINDOW_SIZE)
+    state_history = deque(maxlen=STATE_HISTORY_SIZE)
+
+    last_evaluation = time.monotonic()
+    warmup_scores = []
+    bg_score = None
+    smooth_score = None
+
+    print("=== Zone Detection Demo Started ===")
+    print(f"[워밍업] 지금 방에서 나가 주세요! 빈 방 기준선을 {WARMUP_FRAMES}프레임 동안 측정합니다...")
+
+    while True:
+        rssi, amplitude = read_frame(serial_port)
+        if amplitude is None:
+            continue
+
+        rssi_buffer.append(rssi)
+        amp_buffer.append(amplitude)
+
+        now = time.monotonic()
+        if now - last_evaluation < SLIDE_INTERVAL:
+            continue
+        last_evaluation = now
+
+        if len(amp_buffer) < WINDOW_SIZE:
+            continue
+
+        raw_score = compute_raw_score(amp_buffer)
+        median_rssi = np.median(rssi_buffer)
+
+        if bg_score is None:
+            warmup_scores.append(raw_score)
+            if len(warmup_scores) % 10 == 0:
+                print(
+                    f"[{time.strftime('%H:%M:%S')}] 워밍업 "
+                    f"{len(warmup_scores)}/{WARMUP_FRAMES}  score={raw_score:.2f}"
+                )
+            if len(warmup_scores) >= WARMUP_FRAMES:
+                bg_score = finish_warmup(warmup_scores)
+                smooth_score = bg_score
+            continue
+
+        alpha = SCORE_UP if raw_score > smooth_score else SCORE_DOWN
+        smooth_score = (1 - alpha) * smooth_score + alpha * raw_score
+
+        relative_score = smooth_score / (bg_score + 1e-9)
+
+        # 빈 공간으로 판단될 때만 배경 갱신.
+        if relative_score < BG_UPDATE_TH:
+            bg_score = (1 - BG_ALPHA) * bg_score + BG_ALPHA * raw_score
+
+        state_history.append(classify(relative_score))
+        final_state = Counter(state_history).most_common(1)[0][0]
+
+        print(
+            f"[{time.strftime('%H:%M:%S')}] "
+            f"{LABEL_MAP[final_state]} | "
+            f"RSSI={median_rssi:.1f} | "
+            f"score={raw_score:.2f} rel={relative_score:.2f} bg={bg_score:.2f}"
+        )
+
+
+if __name__ == "__main__":
+    main()

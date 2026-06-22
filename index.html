@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Home Security System</title>
     <style>
-      /* ─── Reset & Base ─────────────────────────────────────────────── */
+      /* 기본 리셋 */
       *,
       *::before,
       *::after {
@@ -29,7 +29,7 @@
         overflow: hidden;
       }
 
-      /* ─── Dashboard Card ───────────────────────────────────────────── */
+      /* 대시보드 카드 */
       .card {
         background: rgba(255, 255, 255, 0.025);
         border: 1px solid rgba(255, 255, 255, 0.07);
@@ -39,7 +39,7 @@
         backdrop-filter: blur(24px);
       }
 
-      /* ─── Header ───────────────────────────────────────────────────── */
+      /* 헤더 영역 */
       .header {
         display: flex;
         align-items: flex-start;
@@ -88,7 +88,7 @@
         height: 20px;
       }
 
-      /* ─── Status Section ───────────────────────────────────────────── */
+      /* 상태 표시 영역 */
       .status-wrap {
         display: flex;
         flex-direction: column;
@@ -96,7 +96,7 @@
         gap: 36px;
       }
 
-      /* Outer ring + inner circle */
+      /* 바깥쪽 링과 안쪽 원 */
       .ring-wrap {
         position: relative;
         width: 290px;
@@ -133,8 +133,8 @@
         height: 104px;
       }
 
-      /* ── State colour tokens ── */
-      /* SAFE – green */
+      /* 상태별 색상 */
+      /* SAFE: 초록 */
       .safe .outer-ring {
         border-color: rgba(34, 197, 94, 0.3);
         box-shadow: 0 0 40px rgba(34, 197, 94, 0.08);
@@ -150,7 +150,7 @@
         color: #22c55e;
       }
 
-      /* DETECTED – amber */
+      /* DETECTED: 노랑 */
       .detected .outer-ring {
         border-color: rgba(245, 158, 11, 0.3);
         box-shadow: 0 0 40px rgba(245, 158, 11, 0.08);
@@ -166,7 +166,7 @@
         color: #f59e0b;
       }
 
-      /* ALERT – red */
+      /* ALERT: 빨강 */
       .alert .outer-ring {
         border-color: rgba(239, 68, 68, 0.35);
         box-shadow: 0 0 40px rgba(239, 68, 68, 0.1);
@@ -183,7 +183,7 @@
         color: #ef4444;
       }
 
-      /* CALIBRATING – grey */
+      /* CALIBRATING: 회색 */
       .calibrating .outer-ring {
         border-color: rgba(255, 255, 255, 0.12);
       }
@@ -207,7 +207,7 @@
         }
       }
 
-      /* ─── Text below circle ───────────────────────────────────────── */
+      /* 원 아래쪽 텍스트 */
       .state-label {
         font-size: 54px;
         font-weight: 800;
@@ -225,7 +225,7 @@
         letter-spacing: 0.03em;
       }
 
-      /* ─── Stats Row ────────────────────────────────────────────────── */
+      /* 통계 행 */
       .stats {
         display: flex;
         gap: 52px;
@@ -249,7 +249,7 @@
         margin-top: 4px;
       }
 
-      /* ─── Footer ───────────────────────────────────────────────────── */
+      /* 푸터 */
       .footer {
         text-align: center;
         margin-top: 42px;
@@ -261,10 +261,10 @@
   </head>
   <body>
     <div class="card">
-      <!-- Header -->
+      <!-- 헤더 -->
       <header class="header">
         <div class="header-brand">
-          <!-- Shield logo -->
+          <!-- 방패 로고 -->
           <svg
             class="brand-icon"
             viewBox="0 0 48 48"
@@ -291,7 +291,7 @@
           </div>
         </div>
 
-        <!-- Connection badge -->
+        <!-- 연결 상태 -->
         <div class="conn-badge" id="connBadge">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
@@ -318,13 +318,13 @@
         </div>
       </header>
 
-      <!-- Status area -->
+      <!-- 감지 상태 -->
       <div id="root" class="status-wrap safe">
-        <!-- Ring + circle -->
+        <!-- 상태 원 -->
         <div class="ring-wrap">
           <div class="outer-ring"></div>
           <div class="circle">
-            <!-- Icon swapped via JS -->
+            <!-- 아이콘은 상태별로 JS에서 채움 -->
             <svg
               id="stateIcon"
               viewBox="0 0 100 100"
@@ -334,13 +334,13 @@
           </div>
         </div>
 
-        <!-- Label + message -->
+        <!-- 상태 문구 -->
         <div>
           <div class="state-label" id="stateLabel">—</div>
           <div class="state-msg" id="stateMsg">Connecting…</div>
         </div>
 
-        <!-- RSSI / score / rel / bg -->
+        <!-- 측정값 -->
         <div class="stats">
           <div class="stat">
             <div class="stat-label">RSSI</div>
@@ -360,14 +360,11 @@
           </div>
         </div>
       </div>
-      <!-- /root -->
-
       <div class="footer" id="clock">—</div>
     </div>
-    <!-- /card -->
 
     <script>
-      /* ── SVG icon paths ─────────────────────────────────── */
+      /* 상태별 SVG 아이콘 */
       const ICONS = {
         SAFE: `
       <path d="M50 10L22 21v18c0 18 10.5 34 28 39.8C67.5 73 78 57 78 39V21L50 10z"
@@ -401,7 +398,7 @@
         CALIBRATING: "CALIBRATING",
       };
 
-      /* ── DOM refs ───────────────────────────────────────── */
+      /* DOM 요소 참조 */
       const root = document.getElementById("root");
       const stateIcon = document.getElementById("stateIcon");
       const stateLabel = document.getElementById("stateLabel");
@@ -412,61 +409,62 @@
       const bgVal = document.getElementById("bgVal");
       const connBadge = document.getElementById("connBadge");
 
-      const STATES = ["safe", "detected", "alert", "calibrating"];
+      const STATE_CLASSES = ["safe", "detected", "alert", "calibrating"];
 
-      function applyState(data) {
-        const key = (data.state || "SAFE").toUpperCase();
-        const cls = key.toLowerCase();
-
-        STATES.forEach((s) => root.classList.remove(s));
-        root.classList.add(cls);
-
-        stateIcon.innerHTML = ICONS[key] ?? ICONS.SAFE;
-        stateLabel.textContent = LABEL[key] ?? key;
-        stateMsg.textContent = data.message ?? "";
-
-        rssiVal.textContent = data.rssi != null ? `${data.rssi} dBm` : "—";
-        motionVal.textContent =
-          data.motion != null ? Number(data.motion).toFixed(2) : "—";
-        relVal.textContent =
-          data.rel != null ? Number(data.rel).toFixed(2) : "—";
-        bgVal.textContent = data.bg != null ? Number(data.bg).toFixed(2) : "—";
+      function formatMetric(value, suffix = "", precision = 2) {
+        if (value == null) return "—";
+        return `${Number(value).toFixed(precision)}${suffix}`;
       }
 
-      /* ── Clock ──────────────────────────────────────────── */
+      function applyState(data) {
+        const requestedState = (data.state || "SAFE").toUpperCase();
+        const key = ICONS[requestedState] ? requestedState : "SAFE";
+        const cls = key.toLowerCase();
+
+        root.classList.remove(...STATE_CLASSES);
+        root.classList.add(cls);
+
+        stateIcon.innerHTML = ICONS[key];
+        stateLabel.textContent = LABEL[key];
+        stateMsg.textContent = data.message ?? "";
+
+        rssiVal.textContent = formatMetric(data.rssi, " dBm", 1);
+        motionVal.textContent = formatMetric(data.motion);
+        relVal.textContent = formatMetric(data.rel);
+        bgVal.textContent = formatMetric(data.bg);
+      }
+
+      /* 시계 */
       const clock = document.getElementById("clock");
       function tick() {
-        const n = new Date();
-        const d = n.toLocaleDateString("en-CA"); // YYYY-MM-DD
-        const t = n.toLocaleTimeString("en-GB"); // HH:MM:SS
-        clock.textContent = `${d}  |  ${t}`;
+        const now = new Date();
+        const date = now.toLocaleDateString("en-CA"); // YYYY-MM-DD 형식.
+        const time = now.toLocaleTimeString("en-GB"); // HH:MM:SS 형식.
+        clock.textContent = `${date}  |  ${time}`;
       }
       tick();
       setInterval(tick, 1000);
 
-      /* ── SSE ────────────────────────────────────────────── */
+      /* SSE 연결 */
       function connect() {
         const es = new EventSource("/events");
 
         es.onopen = () => {
           connBadge.style.color = "#22c55e";
-          connBadge.lastElementChild &&
-            (connBadge.querySelector("span") ?? {}).remove?.();
-          // restore "Connected" text if replaced
-          if (connBadge.lastChild.nodeType === Node.TEXT_NODE)
-            connBadge.lastChild.textContent = " Connected";
         };
 
-        es.onmessage = (e) => {
+        es.onmessage = (event) => {
           try {
-            applyState(JSON.parse(e.data));
-          } catch (_) {}
+            applyState(JSON.parse(event.data));
+          } catch (error) {
+            console.warn("Invalid SSE payload", error);
+          }
         };
 
         es.onerror = () => {
           connBadge.style.color = "#ef4444";
           es.close();
-          setTimeout(connect, 3000); // auto-reconnect
+          setTimeout(connect, 3000); // 3초 후 재연결.
         };
       }
 
