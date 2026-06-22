@@ -2,6 +2,18 @@
 
 ESP32 보드에서 수집한 **CSI(Channel State Information)** 데이터를 분석해 방 안의 움직임을 실시간으로 감지하고, 브라우저 대시보드에 표시하는 시스템입니다.
 
+[![Live Demo](https://img.shields.io/badge/🧸_Live_Demo-wilsonweb--lake.vercel.app-B89B72?style=for-the-badge)](https://wilsonweb-lake.vercel.app/)
+
+## 프로젝트 소개
+
+WiFi 신호는 사람이나 물체의 움직임에 따라 미세하게 변화합니다. 이 프로젝트는 ESP32에서 수집한 CSI 신호의 진폭 변화를 분석해 별도의 카메라 없이 실내 상태를 감지합니다.
+
+분석 결과는 **SAFE**, **DETECTED**, **ALERT** 세 단계로 구분되며, Flask와 SSE를 통해 웹 대시보드에 실시간으로 전달됩니다. 상단의 라이브 데모에서 실제 화면 구성을 확인할 수 있습니다.
+
+> 이 README는 CSI 데이터 수집부터 움직임 분석, 서버 전송, 대시보드 표시까지의 전체 구현 및 동작 프로세스를 설명합니다.
+
+<br>
+
 ---
 
 ## 파일 구성
@@ -15,7 +27,7 @@ ESP32 보드에서 수집한 **CSI(Channel State Information)** 데이터를 분
 
 ---
 
-## 전체 동작 흐름
+## 전체 동작 프로세스
 
 ```
 ESP32 (WiFi CSI 전송)
